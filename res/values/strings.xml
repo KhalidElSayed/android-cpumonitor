@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="hello">Hello World, CPUMonitorActivity!</string>
+    <string name="app_name">CPUMonitor</string>
+    <string name="meter_needle">Meter Needle</string>
+    <string name="meter_background">Meter Background</string>
+
+</resources>

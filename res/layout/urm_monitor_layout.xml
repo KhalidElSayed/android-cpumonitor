@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:urm="http://schemas.tomdignan.com/urm"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent" >
+
+    <fragment
+        android:layout_alignParentTop="true"
+        android:id="@+id/fResourceMeter1"
+        android:name="com.tomdignan.UltimateResourceMonitor.URMResourceMeterFragment"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        urm:size="medium" />
+
+    <fragment
+        android:id="@+id/fResourceMeter2"
+        android:name="com.tomdignan.UltimateResourceMonitor.URMResourceMeterFragment"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_toRightOf="@+id/fResourceMeter1"
+        urm:size="medium" ></fragment>
+
+    <fragment
+        android:layout_below="@+id/fResourceMeter1"
+        android:id="@+id/fResourceMeter3"
+        android:name="com.tomdignan.UltimateResourceMonitor.URMResourceMeterFragment"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        urm:size="medium" />
+
+    <fragment
+        android:layout_below="@+id/fResourceMeter2"
+        android:layout_toRightOf="@+id/fResourceMeter3"
+        android:id="@+id/fResourceMeter4"
+        android:name="com.tomdignan.UltimateResourceMonitor.URMResourceMeterFragment"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        urm:size="medium" />
+
+    <Button
+        android:layout_alignParentBottom="true"
+        android:id="@+id/bTest"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:onClick="onClick"
+        android:text="test" />
+</RelativeLayout>

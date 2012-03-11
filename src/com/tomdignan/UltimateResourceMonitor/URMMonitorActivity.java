@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.view.View;
+import android.widget.Button;
 
 /**
  * Main Activity of the application. Responsible for displaying four meters
@@ -17,7 +18,8 @@ import android.view.View;
  */
 public class URMMonitorActivity extends FragmentActivity 
 implements View.OnClickListener {
-
+	private URMResourceMonitor mResourceMonitor = new URMResourceMonitor();
+	
 	@SuppressWarnings("unused")
 	private static final String TAG = "URMMonitorActivity";
 	
@@ -61,13 +63,22 @@ implements View.OnClickListener {
 				.findFragmentById(R.id.fResourceMeter4));
     }
     
-	public void onClick(View view) {
+	public synchronized void onClick(View view) {
 		int id = view.getId();
 		switch(id) {
 		case R.id.bTest:
-			for (URMResourceMeterFragment meter : mResourceMeters) {
-				meter.rotateNeedle();
+			Button button = (Button) view;
+			if (mResourceMonitor.isStarted()) {
+				mResourceMonitor.stop();
+				button.setText("Start Monitoring");
+			} else {
+				mResourceMonitor.start();
+				button.setText("Stop Monitoring");
 			}
+		break;
+//			for (URMResourceMeterFragment meter : mResourceMeters) {
+//				meter.rotateNeedle();
+//			}
 		}
 	}
 }

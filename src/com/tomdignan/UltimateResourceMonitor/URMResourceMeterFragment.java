@@ -1,6 +1,5 @@
 package com.tomdignan.UltimateResourceMonitor;
 
-
 import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -94,7 +93,10 @@ public class URMResourceMeterFragment extends Fragment {
 	}
 	
 
-	
+	/**
+	 * Used for testing alignment. Just rotates the needle of the 
+	 * meter 360 degrees.
+	 */
     public void rotateNeedle() {
         int xCenter = mNeedle.getWidth() / 2 + 1;
         int yCenter = mNeedle.getHeight() / 2 + 1;

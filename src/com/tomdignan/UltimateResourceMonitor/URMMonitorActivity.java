@@ -2,6 +2,9 @@ package com.tomdignan.UltimateResourceMonitor;
 
 
 import java.util.ArrayList;
+
+import com.tomdignan.UltimateResourceMonitor.URMResourceMonitor.OnResourcesReceivedListener;
+
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
@@ -17,7 +20,7 @@ import android.widget.Button;
  * @author Tom Dignan
  */
 public class URMMonitorActivity extends FragmentActivity 
-implements View.OnClickListener {
+implements View.OnClickListener, OnResourcesReceivedListener {
 	private URMResourceMonitor mResourceMonitor = new URMResourceMonitor();
 	
 	@SuppressWarnings("unused")
@@ -38,16 +41,25 @@ implements View.OnClickListener {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.urm_monitor_layout);
-        getResourceMeters();
+        initResourceMeters();
+        attachResourceMonitor();
     }
 
+    /**
+     * Connect the resource monitor to the implemented
+     * OnResourcesReceivedListener.
+     */
+    private void attachResourceMonitor() {
+    	mResourceMonitor.setOnResourcesReceivedListener(this);
+    }
+    
     /** 
      * Get the expected (4) resource meters that were defined
      * in XML and store them in the list mResourceMeters. 
      * 
      * Must be called before attempting to use any resource meters.
      */
-    private void getResourceMeters() {
+    private void initResourceMeters() {
         FragmentManager manager = getSupportFragmentManager();
         
 		mResourceMeters.add((URMResourceMeterFragment) manager
@@ -75,10 +87,32 @@ implements View.OnClickListener {
 				mResourceMonitor.start();
 				button.setText("Stop Monitoring");
 			}
-		break;
+			
 //			for (URMResourceMeterFragment meter : mResourceMeters) {
-//				meter.rotateNeedle();
+//				meter.rotateNeedle(0, 20);
 //			}
+//			
+			break;
 		}
+	}
+
+	/**
+	 * Receives results from the resource monitor.
+	 * 
+	 * @param long[] cpuUsages -- First result is the number of CPUs
+	 * available in the array (It is always 8 longs, but doesn't use
+	 * all of the available space. This is so it can be used when phones
+	 * with more cores come out.), second result is the aggregate of all cores,
+	 * all subsequent results are the cpu0->cpuN. Don't read past cpuUsages[0]
+	 * elements!
+	 */
+	public void onResourcesReceived(final float[] cpuUsages) {
+		runOnUiThread(new Runnable() {
+			public void run() {
+				for (int i = 1; i <= cpuUsages[0]; i++) {
+					mResourceMeters.get(i - 1).setValue(cpuUsages[i]);
+				}
+			}
+		});
 	}
 }

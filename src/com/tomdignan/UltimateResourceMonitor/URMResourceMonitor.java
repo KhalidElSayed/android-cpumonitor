@@ -2,7 +2,6 @@ package com.tomdignan.UltimateResourceMonitor;
 
 import java.io.FileNotFoundException;
 import java.util.Arrays;
-
 import android.util.Log;
 
 /**
@@ -19,7 +18,7 @@ public class URMResourceMonitor {
 	
 	/** Interface for handling the results of this resource polling */
 	public interface OnResourcesReceivedListener {
-		public void onResourcesReceived(long[] cpuUsages);
+		public void onResourcesReceived(float[] cpuUsages);
 	}
 
 	/** 
@@ -29,7 +28,7 @@ public class URMResourceMonitor {
 	protected OnResourcesReceivedListener mListener = null;
 	
 	/** Resources will be returned every POLL_FREQUENCY_MS */
-	protected static final int POLL_FREQUENCY_MS = 1000;
+	protected static final int POLL_FREQUENCY_MS = 500;
 	
 	/** Register an OnResourcesReceivedListener to get results */
 	public void setOnResourcesReceivedListener(OnResourcesReceivedListener listener) {
@@ -40,7 +39,7 @@ public class URMResourceMonitor {
 	 * Publish results to the registered OnResourcesReceivedListener
 	 * If one is not available, a warning will be printed to the logs.
 	 */
-	private void publishResults(long[] cpuUsages) {
+	private void publishResults(float[] cpuUsages) {
 		if (mListener != null) {
 			mListener.onResourcesReceived(cpuUsages);
 		} else {
@@ -117,13 +116,14 @@ public class URMResourceMonitor {
 			try {
 				Thread.sleep(POLL_FREQUENCY_MS);
 			} catch (InterruptedException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 			
 			while(!Thread.interrupted()) {
 				cpuResults = mCPUStatReader.getUsage(cpuResults);
 				Log.d(TAG, "cpuResults=" + Arrays.toString(cpuResults));
+				publishResults(cpuResults);
+				
 				try {
 					Thread.sleep(POLL_FREQUENCY_MS);
 				} catch (InterruptedException e) {

@@ -35,11 +35,23 @@ public class URMResourceMeterFragment extends Fragment {
 	/** Public, empty,  constructor */
 	public URMResourceMeterFragment() {}
 	
-	/** Handle to the "needle" which is rotated to indicate the position */
+	/** MUST be a handle to the "needle" which is rotated to indicate the position */
 	private View mNeedle;	
 	
-	/** Indicates the size of the requested meter */
+	/** MUST indicate the size of the requested meter */
 	private Integer mSizeCode = null;
+	
+	/** MUST be set to the current value of the meter [0,1] */
+	private float mValue = 0;
+	
+	/** MUST be set to the current position of the needle in degrees */
+	private float mDegrees = 0;
+	
+	/** MUST be set to the center of the meter on the x-axis */
+	private int mXCenter;
+	
+	/** MUST be set to center of the meter on the y-axis */
+	private int mYCenter;
 	
 	/** Maps size names to size codes */
 	private static int getSizeCode(String sizeName) {
@@ -64,9 +76,10 @@ public class URMResourceMeterFragment extends Fragment {
 		super.onInflate(activity, attrs, savedInstanceState);
 		// Save the size for use in onCreateView
 		mSizeCode = getSizeCode(attrs.getAttributeValue(NS_URM, ATTR_SIZE));
+
 	}
 	
-	
+	/** {@inheritDoc} */
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container,
 			Bundle savedInstanceState) {
@@ -89,19 +102,36 @@ public class URMResourceMeterFragment extends Fragment {
 		}
 		
 		mNeedle = view.findViewById(R.id.ivMeterNeedle);
-		return view;
+        return view;
 	}
 	
-
 	/**
 	 * Used for testing alignment. Just rotates the needle of the 
 	 * meter 360 degrees.
+	 * 
+	 * @float startAngle in degrees
+	 * @float endAngle in degrees
 	 */
-    public void rotateNeedle() {
-        int xCenter = mNeedle.getWidth() / 2 + 1;
-        int yCenter = mNeedle.getHeight() / 2 + 1;
-        RotateAnimation animation = new RotateAnimation(0f, 360f, xCenter, yCenter);
-        animation.setDuration(1200);
-        mNeedle.startAnimation(animation);
-    }
+	public void rotateNeedle(float startAngle, float endAngle) {
+		mXCenter = mNeedle.getWidth() / 2 + 1;
+        mYCenter = mNeedle.getHeight() / 2 + 1;		
+		RotateAnimation animation = new RotateAnimation(startAngle, endAngle,
+				mXCenter, mYCenter);
+		animation.setDuration(500);
+		mNeedle.startAnimation(animation);
+	}
+    
+
+    /**
+     * Sets the current position of the resource meter. Should be a value 
+     * between 0 and 1, inclusive.
+     * 
+     * @param float percent [0, 1]
+     */
+	public void setValue(float percent) {
+		float endDegrees = percent *  300;
+		rotateNeedle(mDegrees, endDegrees);
+		mValue = percent;
+		mDegrees = endDegrees;
+	}
 }

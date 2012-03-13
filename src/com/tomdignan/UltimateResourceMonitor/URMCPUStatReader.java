@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.HashMap;
-import android.util.Log;
 
 /**
  * Reads CPU time statistics from /proc/stat. The time elapsed between
@@ -27,7 +26,7 @@ public class URMCPUStatReader {
 	//  THE INDEX VALUES ARE FOR THE INDEX IN THE PARSED STRING, NOT IN THE Long[] JIFFIES ARRAY!!!
 	//	FOR THE Long[] ARRAY, SUBTRACT 1
 	/////////////////////////////////////////////////////////////////////////////////////////////
-	
+
 	/** The time spent in USER processes in jiffies */
 	private static final int INDEX_USER = 1;
 	
@@ -206,6 +205,16 @@ public class URMCPUStatReader {
 		mTotalCPUNames = readingSize;
 	}
 	
+	/** 
+	 * Better to use this than have readLine() allocate way more lines than
+	 * we will ever need.
+	 */
+	
+	// 4096 is more bytes than we will EVER need for buffering the entire 
+	// /proc/stat file
+	private byte[] mLineBuffer = new byte[4096];
+	
+	
 	/**
 	 * Reads the current CPU stats from /proc/stat and returns the results
 	 * as a HashMap where the key is the identifier, i.e. "CPU" and the jiffies
@@ -222,20 +231,25 @@ public class URMCPUStatReader {
 		HashMap<String,Long[]> reading = new HashMap<String, Long[]>(MAX_CPUS);
 		try {
 			mStatFileReader.seek(0);
-			String line = mStatFileReader.readLine();
+			mStatFileReader.read(mLineBuffer);
+			String[] lines = (new String(mLineBuffer).split("\n"));
 			
-			while (line != null && line.startsWith("cpu")) {
-				String[] tokens = line.split(" +");
-				
-				Long[] jiffies = new Long[tokens.length - 1];
-				
-				for (int i = 1; i < tokens.length; i++) {
-					//Log.d(TAG, "Token="+ tokens[i]);
-					jiffies[i - 1] = Long.parseLong(tokens[i]);
+			for (String line : lines) {
+				if (line.startsWith("cpu")) {
+					String[] tokens = line.split(" +");
+					Long[] jiffies = new Long[tokens.length - 1];
+					
+					for (int i = 1; i < tokens.length; i++) {
+						//Log.d(TAG, "Token="+ tokens[i]);
+						jiffies[i - 1] = Long.parseLong(tokens[i]);
+					}
+					
+					reading.put(tokens[0], jiffies);
+					line = mStatFileReader.readLine();
+				} else {
+					// We can assume that they are all at the beginning.
+					break;
 				}
-				
-				reading.put(tokens[0], jiffies);
-				line = mStatFileReader.readLine();
 			}
 			
 			if (reading.size() > mTotalCPUNames) {

@@ -1,5 +1,6 @@
 package com.tomdignan.UltimateResourceMonitor;
 
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -28,34 +29,32 @@ public class URMCPUStatReader {
 	/////////////////////////////////////////////////////////////////////////////////////////////
 
 	/** The time spent in USER processes in jiffies */
-	private static final int INDEX_USER = 1;
+	private static final int INDEX_USER = 0;
 	
 	/** The time spent in niced processes in jiffies */
-	private static final int INDEX_NICE = 2;
+	private static final int INDEX_NICE = 1;
 	
 	/** The time spent in system processes in jiffies */
-	private static final int INDEX_SYS = 3;
+	private static final int INDEX_SYS = 2;
 	
 	/** The IDLE in jiffies (in the data after splitting off "CPU*" */
-	private static final int INDEX_IDLE = 4;
+	private static final int INDEX_IDLE = 3;
 	
 	/** the time spent waiting for I/O to complete */
-	private static final int INDEX_IOWAIT = 5;
+	private static final int INDEX_IOWAIT = 4;
 	
 	/** The time spent servicing interrupts */
-	private static final int INDEX_IRQ = 6;
+	private static final int INDEX_IRQ = 5;
 	
 	/** The time spent servicing softirqs */
-	private static final int INDEX_SOFTIRQ = 7;
+	private static final int INDEX_SOFTIRQ = 6;
 	
 	/** Support 8 cores max for now. */
 	private static final int MAX_CPUS = 8;
 	
 	/** Path to the /proc/stat file */
 	private static final String PROC_STAT_PATH = "/proc/stat";
-	
-	/** Holder for the last reading, used to calculate usage over time */
-	private HashMap<String,Long[]> mLastReading = null;
+
 	
 	/** List of all possible CPUs that could appear in /proc/stat */
 	private ArrayList<String> mCPUNames = new ArrayList<String>(MAX_CPUS);
@@ -66,6 +65,44 @@ public class URMCPUStatReader {
 	/** File reader for /proc/stat */
 	RandomAccessFile mStatFileReader;
 
+	/** 
+	 * Used for buffering the /proc/stat file
+	 */
+	private byte[] mBuffer = new byte[8192];
+	
+	/** We will rely on this because it's fast, but it does make the code more
+	 prone to breaking of the format of the /proc/stat file ever changes. */
+	private static final int FIRST_STAT_OFFSET = 5;
+	
+	/** Just store the powers of 10 so they never have to be computed. */
+	private static final long[] POWERS_10 = { 
+		  1, 	
+		  10, 
+		  100, 
+		  1000, 
+		  10000, 
+		  100000, 
+		  1000000, 
+		  10000000, 
+		  100000000,
+		  1000000000
+	};
+
+	/** No reason not to re-use this. Each call to getUsage() will swap this with mLastReading. */
+	private HashMap<String,Long[]> mReading = null;
+	
+	
+	/** Holder for the last reading, used to calculate usage over time. Each call to getUsage
+	 * will swap this with mReading. */
+	private HashMap<String,Long[]> mLastReading = null;
+	
+	/** Swap any objects */
+	private static void swap(Object a, Object b) {
+		Object tmp = a;
+		a = b;
+		b = tmp;
+	}
+	
 	/**
 	 * Constructs a new CPU stat reader. Initializes the time in MS and 
 	 * takes a first reading for use in the first call to getUsage().
@@ -73,13 +110,25 @@ public class URMCPUStatReader {
 	 * @throws FileNotFoundException
 	 */
 	public URMCPUStatReader() throws FileNotFoundException {
+		initCPUs();
+		File file = new File(PROC_STAT_PATH);
+		mStatFileReader = new RandomAccessFile(file, "r");
+	}
+	
+	
+	/** Used for providing a mock /proc/stat for testing 
+	 * @throws FileNotFoundException */
+	public URMCPUStatReader(String mockPath) throws FileNotFoundException {
+		initCPUs();
+		File file = new File(mockPath);
+		mStatFileReader = new RandomAccessFile(file, "r");
+	}
+	
+	private void initCPUs() {
 		// All systems will have these names. This will save a few iterations.
 		mTotalCPUNames = 2;
 		mCPUNames.add("cpu");
 		mCPUNames.add("cpu0");
-		
-		File file = new File(PROC_STAT_PATH);
-		mStatFileReader = new RandomAccessFile(file, "r");
 	}
 	
 	/** 
@@ -88,7 +137,7 @@ public class URMCPUStatReader {
 	 * that you use between each getUsage() call!
 	 */
 	public void initializeReading() {
-		mLastReading = getReading();
+		mLastReading = getReading(mLastReading);
 	}
 
 	/**
@@ -105,11 +154,14 @@ public class URMCPUStatReader {
 	 * and returned. On subsequent calls, you should pass this back in in order to
 	 * reuse it. 
 	 * 
+	 * This m __must be synchronized__ as interleaving calls to getUsage 
+	 * reuses the same internal HashMap for storing each reading.
+	 * 
 	 * @return float[] result [<#results>, <cpu>, <cpu0>, ..., <cpuN>]  
 	 */
-	public float[] getUsage(float[] resultHolder) {
-		HashMap<String,Long[]> currentReading = getReading();
-		long currentTimeMS = System.currentTimeMillis();
+	public synchronized float[] getUsage(float[] resultHolder) {
+		mReading = getReading(mReading);
+		
 		float[] results;
 
 		// Save on allocation.
@@ -130,19 +182,19 @@ public class URMCPUStatReader {
 			String cpuName = mCPUNames.get(i);
 
 			
-			Long[] oldJiffies = mLastReading.get(cpuName);
-			Long[] newJiffies = currentReading.get(cpuName);
+			Long[] lastJiffies = mLastReading.get(cpuName);
+			Long[] jiffies = mReading.get(cpuName);
 			
-			if (oldJiffies == null || newJiffies == null) {
-				
+			if (lastJiffies == null || jiffies == null) {
 				results[i + 1] = CPU_IS_ASLEEP;
 			} else {
-				results[i + 1] = computeUsage(oldJiffies, newJiffies);
+				results[i + 1] = computeUsage(lastJiffies, jiffies);
 			}
 		}
 		
-		// Save the new reading as the last reading
-		mLastReading = currentReading;
+		// Swap the current reading and the last reading, to reuse HashMaps
+		swap(mLastReading, mReading);
+		
 		return results;
 	}
 	
@@ -158,15 +210,16 @@ public class URMCPUStatReader {
 	 * @return int percent of time spent doing work.
 	 */
 	private float computeUsage(Long[] reading1, Long[] reading2) {
-		long idle1 = reading1[INDEX_IDLE - 1];
+		long idle1 = reading1[INDEX_IDLE];
 		//Log.d(TAG, "idle1 = " + String.valueOf(idle1));
 		
-		long idle2 = reading2[INDEX_IDLE - 1];
+		long idle2 = reading2[INDEX_IDLE];
 		//Log.d(TAG, "idle2 = " + String.valueOf(idle2));
 		
 
 		long total1 = 0, total2 = 0;
-		for (int i = 0; i < reading1.length; i++) {
+		
+		for (int i = 0; i <= INDEX_SOFTIRQ; i++) {
 			total1 += reading1[i];
 			total2 += reading2[i];
 		}
@@ -205,16 +258,43 @@ public class URMCPUStatReader {
 		mTotalCPUNames = readingSize;
 	}
 	
-	/** 
-	 * Better to use this than have readLine() allocate way more lines than
-	 * we will ever need.
+	/**
+	 * Get the CPU identifier for the byte after the 'cpu' prefix.
+	 * 
+	 * The function is written this way for speed, not for 
+	 * conciseness or expressiveness. This avoids unnecessary concats.
+	 * 
+	 * @param b
+	 * @return
 	 */
+	private static String getCpuName(byte b) {
+		switch(b) {
+		case ' ':
+			return "cpu";
+		case '0':
+			return "cpu0";
+		case '1': 
+			return "cpu1";
+		case '2':
+			return "cpu2";
+		case '3':
+			return "cpu3";
+		case '4':
+			return "cpu4";
+		case '5':
+			return "cpu5";
+		case '6':
+			return "cpu6";
+		case '7':
+			return "cpu7";
+			
+		default:
+			throw new IllegalArgumentException("Bad byte");
+		}
+	}
 	
-	// 4096 is more bytes than we will EVER need for buffering the entire 
-	// /proc/stat file
-	private byte[] mLineBuffer = new byte[4096];
 	
-	
+
 	/**
 	 * Reads the current CPU stats from /proc/stat and returns the results
 	 * as a HashMap where the key is the identifier, i.e. "CPU" and the jiffies
@@ -223,48 +303,91 @@ public class URMCPUStatReader {
 	 * This has the side effect of updating the list of CPUs that this object
 	 * stores internally.
 	 * 
+	 * @param If null, new storage for the reading will be created. The reading
+	 * HashMap will always be expanded as necessary, but will first attempt to
+	 * reuse old Long[] arrays from the last call.
+	 * 
 	 * @return
 	 */
-	public HashMap<String,Long[]> getReading() {
+	public HashMap<String,Long[]> getReading(HashMap<String, Long[]> reading) {
+		// Allocate for the user if he doesn't supply one. It is fine to pass
+		// this one back in.
+		if (reading == null) {
+			reading = new HashMap<String, Long[]>(MAX_CPUS);
+		}
+		
 		long startTime = System.currentTimeMillis();
 		//Log.d(TAG, "getReading() start time (ms): " + String.valueOf(startTime));
-		HashMap<String,Long[]> reading = new HashMap<String, Long[]>(MAX_CPUS);
 		try {
 			mStatFileReader.seek(0);
-			mStatFileReader.read(mLineBuffer);
-			String[] lines = (new String(mLineBuffer).split("\n"));
+			int bytesRead = mStatFileReader.read(mBuffer);
 			
-			for (String line : lines) {
-				if (line.startsWith("cpu")) {
-					String[] tokens = line.split(" +");
-					Long[] jiffies = new Long[tokens.length - 1];
+			String cpuName = null;
+			int i = -1;
+			Long[] values = null;
+			long value = 0;
+			int valueIndex = 0;
+			
+			while (i++ < bytesRead) {
+				
+				// Check for ^cpu. lines
+				if (mBuffer[i] == 'c' && mBuffer[i + 1] == 'p' && 
+						mBuffer[i + 2] == 'u') {
+				
+					// Get appropriate CPU name.
+					cpuName = getCpuName(mBuffer[i + 3]);
 					
-					for (int i = 1; i < tokens.length; i++) {
-						//Log.d(TAG, "Token="+ tokens[i]);
-						jiffies[i - 1] = Long.parseLong(tokens[i]);
+					// Initialize values
+					values = reading.get(cpuName);
+					if (values == null) {
+						values = new Long[10];
 					}
+					valueIndex = 0;
 					
-					reading.put(tokens[0], jiffies);
-					line = mStatFileReader.readLine();
-				} else {
-					// We can assume that they are all at the beginning.
-					break;
+					i += FIRST_STAT_OFFSET;
+				}
+			
+				
+				if (mBuffer[i] >= '0' && mBuffer[i] <= '9') {
+					int j = i;
+					
+					// Find the end of the number. Don't run over newlines.
+					while (mBuffer[j] != ' ' && mBuffer[j] != '\n') j++; j--;
+					//System.out.println("mBuffer[j]=" + String.valueOf(mBuffer[j]));		
+					
+					int power = j - i;
+					//System.out.println("Power="+power);
+					
+					// Walk i towards j and calculate the value
+					while (i <= j) {
+						long placeValue = (mBuffer[i++] - '0') * POWERS_10[power--];
+						//System.out.println("placeValue=" + placeValue);
+						value += placeValue;
+					}
+				}
+			
+				if (valueIndex < INDEX_SOFTIRQ) {
+					values[valueIndex++] = value;
+					value = 0;
+				} else if (valueIndex == INDEX_SOFTIRQ) {
+					values[valueIndex++] = value;
+					value = 0;
+					reading.put(cpuName, values);
 				}
 			}
+				
+			//System.out.print(new String(mBuffer));
+			//System.out.println("breakpoint");
+	
 			
 			if (reading.size() > mTotalCPUNames) {
 				updateCPUList(reading);
 			}
 			
-			
-			long endTime = System.currentTimeMillis();
-			
-			//Log.d(TAG, "getReading() end time (ms): " + String.valueOf(System.currentTimeMillis()));
-			//Log.d(TAG, "getReading() time elapsed (ms): " + String.valueOf(endTime - startTime));
-			
 			return reading;
+			
 		} catch (IOException e) {
-			//Log.e(TAG, "getReading(): caught IOException " + e.getMessage());
+			System.out.println(TAG + " getReading(): caught IOException " + e.getMessage());
 			return null;
 		}
 	}

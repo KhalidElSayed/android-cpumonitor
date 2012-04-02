@@ -28,7 +28,7 @@ public class URMResourceMonitor {
 	protected OnResourcesReceivedListener mListener = null;
 	
 	/** Resources will be returned every POLL_FREQUENCY_MS */
-	protected static final int POLL_FREQUENCY_MS = 500;
+	protected static final int POLL_FREQUENCY_MS = 1000;
 	
 	/** Register an OnResourcesReceivedListener to get results */
 	public void setOnResourcesReceivedListener(OnResourcesReceivedListener listener) {

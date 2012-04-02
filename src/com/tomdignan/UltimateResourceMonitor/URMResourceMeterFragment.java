@@ -76,7 +76,6 @@ public class URMResourceMeterFragment extends Fragment {
 		super.onInflate(activity, attrs, savedInstanceState);
 		// Save the size for use in onCreateView
 		mSizeCode = getSizeCode(attrs.getAttributeValue(NS_URM, ATTR_SIZE));
-
 	}
 	
 	/** {@inheritDoc} */
@@ -117,7 +116,7 @@ public class URMResourceMeterFragment extends Fragment {
         mYCenter = mNeedle.getHeight() / 2 + 1;		
 		RotateAnimation animation = new RotateAnimation(startAngle, endAngle,
 				mXCenter, mYCenter);
-		animation.setDuration(500);
+		animation.setDuration(1000);
 		mNeedle.startAnimation(animation);
 	}
     

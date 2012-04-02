@@ -61,7 +61,6 @@ implements View.OnClickListener, OnResourcesReceivedListener {
      */
     private void initResourceMeters() {
         FragmentManager manager = getSupportFragmentManager();
-        
 		mResourceMeters.add((URMResourceMeterFragment) manager
 				.findFragmentById(R.id.fResourceMeter1));
 		
@@ -106,13 +105,22 @@ implements View.OnClickListener, OnResourcesReceivedListener {
 	 * all subsequent results are the cpu0->cpuN. Don't read past cpuUsages[0]
 	 * elements!
 	 */
-	public void onResourcesReceived(final float[] cpuUsages) {
-		runOnUiThread(new Runnable() {
-			public void run() {
-				for (int i = 1; i <= cpuUsages[0]; i++) {
-					mResourceMeters.get(i - 1).setValue(cpuUsages[i]);
-				}
+	private static class UpdateResourcesRunnable implements Runnable {
+		public ArrayList<URMResourceMeterFragment> resourceMeters;
+		public float[] cpuUsages;
+//		
+		public void run() {
+			for (int i = 1; i <= cpuUsages[0]; i++) {
+				resourceMeters.get(i - 1).setValue(cpuUsages[i]);
 			}
-		});
+		}
+	}
+	
+	private static UpdateResourcesRunnable sUpdateResourcesRunnable = new UpdateResourcesRunnable();
+
+	public void onResourcesReceived(final float[] cpuUsages) {
+		sUpdateResourcesRunnable.cpuUsages = cpuUsages;
+		sUpdateResourcesRunnable.resourceMeters = mResourceMeters;
+		runOnUiThread(sUpdateResourcesRunnable);
 	}
 }

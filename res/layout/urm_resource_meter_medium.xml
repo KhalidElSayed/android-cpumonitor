@@ -11,11 +11,11 @@
         android:gravity="center"
         android:textSize="14dp" />
 
-    <FrameLayout
-        android:id="@+id/flResourceMeter"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/tvResourceName" >
+<!--     <FrameLayout -->
+<!--         android:id="@+id/flResourceMeter" -->
+<!--         android:layout_width="wrap_content" -->
+<!--         android:layout_height="wrap_content" -->
+<!--         android:layout_below="@id/tvResourceName" > -->
 
         <ImageView
             android:id="@+id/ivMeterBg"
@@ -31,5 +31,5 @@
             android:contentDescription="@string/meter_background"
             android:src="@drawable/urm_meter_needle_medium" />
         
-    </FrameLayout>
+<!--     </FrameLayout> -->
 </RelativeLayout>

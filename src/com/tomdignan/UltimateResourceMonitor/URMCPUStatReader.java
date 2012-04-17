@@ -54,7 +54,6 @@ public class URMCPUStatReader {
 	
 	/** Path to the /proc/stat file */
 	private static final String PROC_STAT_PATH = "/proc/stat";
-
 	
 	/** List of all possible CPUs that could appear in /proc/stat */
 	private ArrayList<String> mCPUNames = new ArrayList<String>(MAX_CPUS);
@@ -267,7 +266,7 @@ public class URMCPUStatReader {
 	 * @param b
 	 * @return
 	 */
-	private static String getCpuName(byte b) {
+	public static String getCpuName(byte b) {
 		switch(b) {
 		case ' ':
 			return "cpu";
@@ -289,7 +288,7 @@ public class URMCPUStatReader {
 			return "cpu7";
 			
 		default:
-			throw new IllegalArgumentException("Bad byte");
+			throw new IllegalArgumentException("Unknown CPU number");
 		}
 	}
 	

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="fill_parent">
+
+    <!-- ex. Cpu0 -->
+    <TextView
+        android:id="@+id/tvResourceName"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textSize="18dp" 
+        android:text="Cpu0"
+        />
+
+	<!-- ex. 99%  -->
+	<TextView
+	    android:id="@+id/tvResourceUsage"
+	    android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
+	    android:text="99%"
+	    />
+</RelativeLayout>

@@ -70,8 +70,6 @@ implements View.OnClickListener, OnResourcesReceivedListener {
 		mResourceMeters.add((URMResourceMeterFragment) manager
 				.findFragmentById(R.id.fResourceMeter3));
 		
-		mResourceMeters.add((URMResourceMeterFragment) manager
-				.findFragmentById(R.id.fResourceMeter4));
     }
     
 	public synchronized void onClick(View view) {
@@ -108,10 +106,13 @@ implements View.OnClickListener, OnResourcesReceivedListener {
 	private static class UpdateResourcesRunnable implements Runnable {
 		public ArrayList<URMResourceMeterFragment> resourceMeters;
 		public float[] cpuUsages;
-//		
+
 		public void run() {
 			for (int i = 1; i <= cpuUsages[0]; i++) {
-				resourceMeters.get(i - 1).setValue(cpuUsages[i]);
+				int number = i - 1;
+				URMResourceMeterFragment meter = resourceMeters.get(number);
+				meter.setName("cpu" + (number == 0 ? " " : number + " "));
+				meter.setValue(cpuUsages[i]);
 			}
 		}
 	}
